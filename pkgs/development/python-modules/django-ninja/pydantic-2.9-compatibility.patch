@@ -1,0 +1,184 @@
+From 7c39ecc43a56096ec55e0b39ef17bc30efa3d614 Mon Sep 17 00:00:00 2001
+From: Vitaliy Kucheryaviy <ppr.vitaly@gmail.com>
+Date: Mon, 16 Sep 2024 11:15:32 +0300
+Subject: [PATCH] pydatnic 2.9 compatibility
+
+---
+ tests/test_annotated.py                           | 11 +++++++----
+ tests/test_orm_schemas.py                         | 15 +++++++++------
+ .../schema_fixtures/test-multi-body-file.json     |  6 +-----
+ .../test-multi-body-form-file.json                |  6 +-----
+ .../schema_fixtures/test-multi-body-form.json     |  6 +-----
+ .../schema_fixtures/test-multi-body.json          |  6 +-----
+ .../test_with_django/test_multi_param_parsing.py  |  2 ++
+ tests/util.py                                     | 13 +++++++++++++
+ 8 files changed, 35 insertions(+), 30 deletions(-)
+ create mode 100644 tests/util.py
+
+diff --git a/tests/test_annotated.py b/tests/test_annotated.py
+index 180269986..8d40ce0fc 100644
+--- a/tests/test_annotated.py
++++ b/tests/test_annotated.py
+@@ -1,6 +1,7 @@
+ from typing import List
+
+ from typing_extensions import Annotated
++from util import pydantic_ref_fix
+
+ from ninja import Body, Cookie, Form, Header, NinjaAPI, Path, Query, Schema
+ from ninja.testing import TestClient
+@@ -192,10 +193,12 @@ def test_openapi_schema():
+                 "requestBody": {
+                     "content": {
+                         "application/json": {
+-                            "schema": {
+-                                "allOf": [{"$ref": "#/components/schemas/Payload"}],
+-                                "examples": [{"p": "test", "t": 42}],
+-                            }
++                            "schema": pydantic_ref_fix(
++                                {
++                                    "$ref": "#/components/schemas/Payload",
++                                    "examples": [{"p": "test", "t": 42}],
++                                }
++                            )
+                         }
+                     },
+                     "required": True,
+diff --git a/tests/test_orm_schemas.py b/tests/test_orm_schemas.py
+index b1f116410..d3fde8c1f 100644
+--- a/tests/test_orm_schemas.py
++++ b/tests/test_orm_schemas.py
+@@ -5,6 +5,7 @@
+ from django.contrib.postgres import fields as ps_fields
+ from django.db import models
+ from django.db.models import Manager
++from util import pydantic_ref_fix
+
+ from ninja.errors import ConfigError
+ from ninja.orm import create_schema
+@@ -284,16 +285,18 @@ class Meta:
+     }
+
+     SchemaClsDeep = create_schema(TestModel, name="TestSchemaDeep", depth=1)
+-    # print(SchemaClsDeep.json_schema())
++    print(SchemaClsDeep.json_schema())
+     assert SchemaClsDeep.json_schema() == {
+         "type": "object",
+         "properties": {
+             "id": {"anyOf": [{"type": "integer"}, {"type": "null"}], "title": "ID"},
+-            "onetoonefield": {
+-                "title": "Onetoonefield",
+-                "description": "",
+-                "allOf": [{"$ref": "#/$defs/Related"}],
+-            },
++            "onetoonefield": pydantic_ref_fix(
++                {
++                    "title": "Onetoonefield",
++                    "description": "",
++                    "$ref": "#/$defs/Related",
++                }
++            ),
+             "foreignkey": {
+                 "title": "Foreignkey",
+                 "allOf": [{"$ref": "#/$defs/Related"}],
+diff --git a/tests/test_with_django/schema_fixtures/test-multi-body-file.json b/tests/test_with_django/schema_fixtures/test-multi-body-file.json
+index 269b94338..bb5deeeb0 100644
+--- a/tests/test_with_django/schema_fixtures/test-multi-body-file.json
++++ b/tests/test_with_django/schema_fixtures/test-multi-body-file.json
+@@ -39,11 +39,7 @@
+               "data": {
+                 "title": "Data4 Title",
+                 "description": "Data4 Desc",
+-                "allOf": [
+-                  {
+-                    "$ref": "#/components/schemas/TestData4"
+-                  }
+-                ]
++                "$ref": "#/components/schemas/TestData4"
+               },
+               "nested-data": {
+                 "$ref": "#/components/schemas/TestData"
+diff --git a/tests/test_with_django/schema_fixtures/test-multi-body-form-file.json b/tests/test_with_django/schema_fixtures/test-multi-body-form-file.json
+index 43430b789..9a610c616 100644
+--- a/tests/test_with_django/schema_fixtures/test-multi-body-form-file.json
++++ b/tests/test_with_django/schema_fixtures/test-multi-body-form-file.json
+@@ -68,11 +68,7 @@
+               "data": {
+                 "title": "Data4 Title",
+                 "description": "Data4 Desc",
+-                "allOf": [
+-                  {
+-                    "$ref": "#/components/schemas/TestData4"
+-                  }
+-                ]
++                "$ref": "#/components/schemas/TestData4"
+               }
+             },
+             "required": [
+diff --git a/tests/test_with_django/schema_fixtures/test-multi-body-form.json b/tests/test_with_django/schema_fixtures/test-multi-body-form.json
+index 07d563ef5..7ec66f433 100644
+--- a/tests/test_with_django/schema_fixtures/test-multi-body-form.json
++++ b/tests/test_with_django/schema_fixtures/test-multi-body-form.json
+@@ -63,11 +63,7 @@
+               "data": {
+                 "title": "Data4 Title",
+                 "description": "Data4 Desc",
+-                "allOf": [
+-                  {
+-                    "$ref": "#/components/schemas/TestData4"
+-                  }
+-                ]
++                "$ref": "#/components/schemas/TestData4"
+               }
+             },
+             "required": [
+diff --git a/tests/test_with_django/schema_fixtures/test-multi-body.json b/tests/test_with_django/schema_fixtures/test-multi-body.json
+index d3a143550..1b1d40d23 100644
+--- a/tests/test_with_django/schema_fixtures/test-multi-body.json
++++ b/tests/test_with_django/schema_fixtures/test-multi-body.json
+@@ -34,11 +34,7 @@
+               "data": {
+                 "title": "Data4 Title",
+                 "description": "Data4 Desc",
+-                "allOf": [
+-                  {
+-                    "$ref": "#/components/schemas/TestData4"
+-                  }
+-                ]
++                "$ref": "#/components/schemas/TestData4"
+               },
+               "nested-data": {
+                 "$ref": "#/components/schemas/TestData"
+diff --git a/tests/test_with_django/test_multi_param_parsing.py b/tests/test_with_django/test_multi_param_parsing.py
+index 5b3fd1db7..866415695 100644
+--- a/tests/test_with_django/test_multi_param_parsing.py
++++ b/tests/test_with_django/test_multi_param_parsing.py
+@@ -105,6 +105,8 @@ def test_validate_test_data():
+                 json.dump(schema["paths"][path], f, indent=2)
+         with Path(filename).open() as f:
+             data = json.load(f)
++            print("---" * 10, filename)
++            print(data)
+             assert json.loads(json.dumps(schema["paths"][path])) == data
+
+
+diff --git a/tests/util.py b/tests/util.py
+new file mode 100644
+index 000000000..12e046b37
+--- /dev/null
++++ b/tests/util.py
+@@ -0,0 +1,13 @@
++import pydantic
++
++
++def pydantic_ref_fix(data: dict):
++    "In pydantic 1.7 $ref was changed to allOf: [{'$ref': ...}] but in 2.9 it was changed back"
++    v = tuple(map(int, pydantic.version.version_short().split(".")))
++    if v < (1, 7) or v >= (2, 9):
++        return data
++
++    result = data.copy()
++    if "$ref" in data:
++        result["allOf"] = [{"$ref": result.pop("$ref")}]
++    return result
+

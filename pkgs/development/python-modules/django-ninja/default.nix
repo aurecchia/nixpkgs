@@ -26,6 +26,8 @@ buildPythonPackage rec {
     hash = "sha256-fPlw9iTt1V8VXd0d5hw1i9LT96BcDkAlpBu9SPPd+hI=";
   };
 
+  patches = [ ./pydantic-2.9-compatibility.patch ];
+
   propagatedBuildInputs = [
     django
     pydantic
